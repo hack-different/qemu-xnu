@@ -14,6 +14,7 @@ body:
       description: I searched GitHub issues for anyone experiancing similar results, and if I found them commented on that issue instead of creating one.
       options:
         - label: I do not waste peoples time
+    validations:
       required: true
   - type: input
     id: uname
@@ -63,4 +64,5 @@ body:
       description: "By submitting this issue, you agree to follow our [Code of Conduct](https://hackdiffe.rent/conduct)"
       options:
         - label: I agree to follow this project's Code of Conduct
+    validations:
       required: true
