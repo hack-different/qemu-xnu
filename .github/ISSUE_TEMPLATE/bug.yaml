@@ -2,14 +2,13 @@ name: Bug Report
 description: File a bug report
 title: "[Bug]: "
 labels: ["bug", "triage"]
-assignees:
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to fill out this bug report.  This repo is meant to triage bugs, and to prepare them for upstream.  No support or SLA is provided.
   - type: checkboxes
-    id: terms
+    id: lazy
     attributes:
       label: I Looked
       description: I searched GitHub issues for anyone experiancing similar results, and if I found them commented on that issue instead of creating one.
