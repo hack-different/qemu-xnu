@@ -1,0 +1,67 @@
+name: Bug Report
+description: File a bug report
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees:
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report.  This repo is meant to triage bugs, and to prepare them for upstream.  No support or SLA is provided.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: I Looked
+      description: I searched GitHub issues for anyone experiancing similar results, and if I found them commented on that issue instead of creating one.
+      options:
+        - label: I do not waste peoples time
+          required: true
+  - type: input
+    id: uname
+    attributes:
+      label: Host System `uname -a`
+      description: Run `uname -a` on the host and paste the result here
+      placeholder: "Darwin Mac.local 21.3.0 Darwin Kernel Version 21.3.0: Wed Jan  5 21:37:58 PST 2022; root:xnu-8019.80.24~20/RELEASE_X86_64 x86_64"
+      validations:
+        required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: What Virtual Device SoC? (CHIP/CPID)
+      description: What is the SoC / Chip ID for the device you are using?
+      multiple: true
+      options:
+        - "8030"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+  - type: textarea
+    id: command-line
+    attributes:
+      label: `qemu-system` Command Line and Output
+      description: Please copy and paste the `qemu-system-aarch64` line used to execute and it's console output
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Other Logs
+      description: Please copy and paste any relevant logs not included in the console
+      placeholder: `.crash` logs, `dmesg`, `idevicerestore` output, etc.
+      render: shell
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://hackdiffe.rent/conduct)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
