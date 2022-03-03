@@ -2,7 +2,6 @@ name: New Feature
 description: Request a feature or document one you're building
 title: "[Feature]: "
 labels: ["enhancement", "triage"]
-assignees:
 body:
   - type: textarea
     id: what
