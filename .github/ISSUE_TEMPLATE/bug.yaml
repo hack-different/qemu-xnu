@@ -21,6 +21,7 @@ body:
       label: "Host System `uname -a`"
       description: "Run `uname -a` on the host and paste the result here"
       placeholder: "Darwin Mac.local 21.3.0 Darwin Kernel Version 21.3.0: Wed Jan  5 21:37:58 PST 2022; root:xnu-8019.80.24~20/RELEASE_X86_64 x86_64"
+    validations:
       required: true
   - type: dropdown
     id: device
@@ -30,6 +31,7 @@ body:
       multiple: true
       options:
         - "8030"
+    validations:
       required: true
   - type: textarea
     id: what-happened
@@ -37,6 +39,7 @@ body:
       label: What happened?
       description: Also tell us, what did you expect to happen?
       placeholder: Tell us what you see!
+    validations:
       required: true
   - type: textarea
     id: command-line
@@ -44,6 +47,7 @@ body:
       label: "`qemu-system` Command Line and Output"
       description: "Please copy and paste the `qemu-system-aarch64` line used to execute and it's console output"
       render: shell
+    validations:
       required: true
   - type: textarea
     id: logs
