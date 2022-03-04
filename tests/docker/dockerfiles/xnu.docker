@@ -1,0 +1,8 @@
+FROM ghcr.io/hack-different/build-images:main
+
+WORKDIR /src
+
+ADD . /src
+
+RUN ./configure --target-list=aarch64-softmmu --disable-capstone --disable-slirp
+RUN make -j$(nproc)

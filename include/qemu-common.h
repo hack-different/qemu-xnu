@@ -10,6 +10,10 @@
 #ifndef QEMU_COMMON_H
 #define QEMU_COMMON_H
 
+#ifndef __unused
+#define __unused __attribute__((unused))
+#endif
+
 #define TFR(expr) do { if ((expr) != -1) break; } while (errno == EINTR)
 
 /* Copyright string for -version arguments, About dialogs, etc */
