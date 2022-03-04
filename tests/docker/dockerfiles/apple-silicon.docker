@@ -1,8 +1,8 @@
-FROM ghcr.io/hack-different/build-images:main
+FROM ghcr.io/hack-different/qemu-xnu-ci-builder:main
 
 WORKDIR /src
 
 ADD . /src
 
-RUN ./configure --target-list=aarch64-softmmu --disable-capstone --disable-slirp
+RUN ./configure --target-list=aarch64-softmmu --disable-capstone --disable-slirp --disable-kvm --disable-gtk --disable-vnc --disable-xen --disable-fuse --disable-hax --disable-libnfs --disable-u2f --disable-snappy --disable-vte --disable-docs
 RUN make -j$(nproc)
