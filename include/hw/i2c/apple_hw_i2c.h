@@ -3,7 +3,7 @@
 
 #include "hw/sysbus.h"
 #include "qom/object.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 #define TYPE_APPLE_HW_I2C "apple.hw-i2c"
 OBJECT_DECLARE_SIMPLE_TYPE(AppleHWI2CState, APPLE_HW_I2C)

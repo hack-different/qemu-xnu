@@ -3,7 +3,7 @@
 
 #include "hw/sysbus.h"
 #include "qom/object.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 #include "hw/spmi/spmi.h"
 
 DeviceState *apple_spmi_pmu_create(DTBNode *node);

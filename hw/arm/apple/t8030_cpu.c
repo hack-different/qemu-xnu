@@ -6,9 +6,9 @@
 #include "migration/vmstate.h"
 #include "hw/irq.h"
 #include "hw/or-irq.h"
-#include "hw/arm/xnu_dtb.h"
-#include "hw/arm/t8030_cpu.h"
-#include "hw/arm/t8030_gxf.h"
+#include "hw/arm/apple/xnu_dtb.h"
+#include "hw/arm/apple/t8030_cpu.h"
+#include "hw/arm/apple/t8030_gxf.h"
 #include "arm-powerctl.h"
 #include "sysemu/reset.h"
 

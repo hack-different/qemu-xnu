@@ -1,7 +1,7 @@
 #ifndef HW_ARM_XNU_PF_H
 #define HW_ARM_XNU_PF_H
 
-#include "hw/arm/xnu.h"
+#include "hw/arm/apple/xnu.h"
 typedef struct xnu_pf_range {
     uint64_t va;
     uint64_t size;

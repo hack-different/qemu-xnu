@@ -12,8 +12,8 @@
 #include "sysemu/dma.h"
 #include "hw/nvme/nvme.h"
 #include "migration/vmstate.h"
-#include "hw/arm/xnu.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu.h"
+#include "hw/arm/apple/xnu_dtb.h"
 #include "hw/misc/apple_mbox.h"
 #include "hw/block/apple_ans.h"
 

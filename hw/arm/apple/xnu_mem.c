@@ -28,7 +28,7 @@
 #include "exec/address-spaces.h"
 #include "exec/memory.h"
 #include "exec/hwaddr.h"
-#include "hw/arm/xnu_mem.h"
+#include "hw/arm/apple/xnu_mem.h"
 
 hwaddr g_virt_base, g_phys_base, g_phys_slide = 0, g_virt_slide = 0;
 

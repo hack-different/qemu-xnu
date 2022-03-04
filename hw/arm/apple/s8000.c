@@ -37,8 +37,8 @@
 #include "qemu/error-report.h"
 #include "hw/platform-bus.h"
 
-#include "hw/arm/s8000.h"
-#include "hw/arm/apple_a9.h"
+#include "hw/arm/apple/s8000.h"
+#include "hw/arm/apple/apple_a9.h"
 
 #include "hw/irq.h"
 #include "hw/or-irq.h"
@@ -49,12 +49,12 @@
 #include "hw/watchdog/apple_wdt.h"
 #include "hw/misc/apple_aes.h"
 #include "hw/nvram/apple_nvram.h"
-#include "hw/arm/apple_dart.h"
+#include "hw/arm/apple/apple_dart.h"
 #include "hw/ssi/apple_spi.h"
-#include "hw/arm/apple_sep.h"
+#include "hw/arm/apple/apple_sep.h"
 
 #include "hw/arm/exynos4210.h"
-#include "hw/arm/xnu_pf.h"
+#include "hw/arm/apple/xnu_pf.h"
 
 #define S8000_SROM_BASE (0x100000000ULL)
 #define S8000_SROM_SIZE (0x80000ULL)

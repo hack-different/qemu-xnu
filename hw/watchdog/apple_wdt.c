@@ -7,8 +7,8 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
-#include "hw/arm/xnu.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu.h"
+#include "hw/arm/apple/xnu_dtb.h"
 #include "sysemu/watchdog.h"
 
 #define TYPE_APPLE_WDT "apple.wdt"

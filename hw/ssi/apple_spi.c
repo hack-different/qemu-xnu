@@ -8,7 +8,7 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 #include "qemu/fifo8.h"
 
 /* XXX: Based on linux/drivers/spi/spi-apple.c */

@@ -8,8 +8,8 @@
 #include "migration/vmstate.h"
 #include "hw/irq.h"
 #include "hw/or-irq.h"
-#include "hw/arm/xnu_dtb.h"
-#include "hw/arm/apple_a9.h"
+#include "hw/arm/apple/xnu_dtb.h"
+#include "hw/arm/apple/apple_a9.h"
 #include "arm-powerctl.h"
 #include "sysemu/reset.h"
 

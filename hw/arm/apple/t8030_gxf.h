@@ -6,7 +6,7 @@
 #include "qapi/error.h"
 #include "qemu-common.h"
 #include "target/arm/cpu.h"
-#include "hw/arm/t8030_cpu.h"
+#include "hw/arm/apple/t8030_cpu.h"
 
 void t8030cpu_init_gxf(T8030CPUState *cpu);
 

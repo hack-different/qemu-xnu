@@ -7,7 +7,7 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 #include "hw/usb/hcd-dwc2.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"

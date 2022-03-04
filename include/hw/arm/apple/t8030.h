@@ -1,5 +1,5 @@
 /*
- * iPhone 6s - s8000
+ * iPhone 11 - t8030
  *
  * Copyright (c) 2019 Jonathan Afek <jonyafek@me.com>
  * Copyright (c) 2021 Nguyen Hoang Trung (TrungNguyen1909)
@@ -23,31 +23,37 @@
  * THE SOFTWARE.
  */
 
-#ifndef HW_ARM_S8000_H
-#define HW_ARM_S8000_H
+#ifndef HW_ARM_T8030_H
+#define HW_ARM_T8030_H
 
 #include "qemu-common.h"
 #include "exec/hwaddr.h"
 #include "hw/boards.h"
 #include "hw/arm/boot.h"
-#include "hw/arm/xnu.h"
+#include "hw/arm/apple/xnu.h"
 #include "exec/memory.h"
 #include "cpu.h"
 #include "sysemu/kvm.h"
-#include "hw/cpu/cluster.h"
-#include "hw/arm/apple_a9.h"
+#include "hw/arm/apple/t8030_cpu.h"
 
-#define TYPE_S8000 "s8000"
+#define TYPE_T8030 "t8030"
 
-#define TYPE_S8000_MACHINE MACHINE_TYPE_NAME(TYPE_S8000)
+#define TYPE_T8030_MACHINE MACHINE_TYPE_NAME(TYPE_T8030)
 
-#define S8000_MACHINE(obj) \
-    OBJECT_CHECK(S8000MachineState, (obj), TYPE_S8000_MACHINE)
+#define T8030_MACHINE(obj) \
+    OBJECT_CHECK(T8030MachineState, (obj), TYPE_T8030_MACHINE)
 
 typedef struct
 {
     MachineClass parent;
-} S8000MachineClass;
+} T8030MachineClass;
+
+typedef enum BootMode {
+    kBootModeAuto = 0,
+    kBootModeManual,
+    kBootModeEnterRecovery,
+    kBootModeExitRecovery,
+} BootMode;
 
 typedef struct
 {
@@ -56,18 +62,19 @@ typedef struct
     hwaddr soc_size;
 
     unsigned long dram_size;
-    AppleA9State *cpus[A9_MAX_CPU];
-    CPUClusterState cluster;
+    T8030CPUState *cpus[T8030_MAX_CPU];
+    T8030CPUCluster clusters[T8030_MAX_CLUSTER];
     SysBusDevice *aic;
     MemoryRegion *sysmem;
     struct mach_header_64 *kernel;
     DTBNode *device_tree;
     struct macho_boot_info bootinfo;
     video_boot_args video;
+    char *trustcache_filename;
+    char *ticket_filename;
+    BootMode boot_mode;
     uint32_t build_version;
-    Notifier init_done_notifier;
     hwaddr panic_base;
     hwaddr panic_size;
-    char pmgr_reg[0x100000];
-} S8000MachineState;
+} T8030MachineState;
 #endif

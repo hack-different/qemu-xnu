@@ -38,14 +38,14 @@
 #include "hw/platform-bus.h"
 #include "arm-powerctl.h"
 
-#include "hw/arm/t8030.h"
-#include "hw/arm/t8030_cpu.h"
+#include "hw/arm/apple/t8030.h"
+#include "hw/arm/apple/t8030_cpu.h"
 
 #include "hw/irq.h"
 #include "hw/or-irq.h"
 #include "hw/intc/apple_aic.h"
 #include "hw/block/apple_ans.h"
-#include "hw/arm/apple_sart.h"
+#include "hw/arm/apple/apple_sart.h"
 #include "hw/gpio/apple_gpio.h"
 #include "hw/i2c/apple_i2c.h"
 #include "hw/usb/apple_otg.h"
@@ -55,10 +55,10 @@
 #include "hw/spmi/apple_spmi.h"
 #include "hw/spmi/apple_spmi_pmu.h"
 #include "hw/misc/apple_smc.h"
-#include "hw/arm/apple_dart.h"
+#include "hw/arm/apple/apple_dart.h"
 
 #include "hw/arm/exynos4210.h"
-#include "hw/arm/xnu_pf.h"
+#include "hw/arm/apple/xnu_pf.h"
 #include "hw/display/m1_fb.h"
 
 #define T8030_DRAM_BASE 0x800000000

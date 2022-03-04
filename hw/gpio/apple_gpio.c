@@ -7,7 +7,7 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 #define GPIO_MAX_PIN_NR             (512)
 #define GPIO_MAX_INT_GRP_NR         (0x7)

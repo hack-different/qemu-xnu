@@ -29,7 +29,7 @@
 #include "sysemu/sysemu.h"
 #include "qemu/error-report.h"
 #include "crypto/hash.h"
-#include "hw/arm/xnu.h"
+#include "hw/arm/apple/xnu.h"
 #include "hw/loader.h"
 #include "img4.h"
 #include "lzfse.h"

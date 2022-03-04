@@ -4,7 +4,7 @@
 #include "qemu/queue.h"
 #include "hw/sysbus.h"
 #include "qom/object.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 SysBusDevice *apple_ans_create(DTBNode* node, uint32_t build_version);
 

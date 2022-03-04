@@ -27,9 +27,9 @@
 #include "hw/arm/boot.h"
 #include "sysemu/sysemu.h"
 #include "qemu/error-report.h"
-#include "hw/arm/xnu.h"
+#include "hw/arm/apple/xnu.h"
 #include "hw/loader.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 

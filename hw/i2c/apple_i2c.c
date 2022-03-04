@@ -9,7 +9,7 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 static void apple_i2c_gpio_set(void *opaque, int line, int level)
 {

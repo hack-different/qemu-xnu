@@ -9,8 +9,8 @@
 #include "qemu/module.h"
 #include "qemu/queue.h"
 #include "sysemu/runstate.h"
-#include "hw/arm/xnu.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 #define TYPE_APPLE_SMC_IOP "apple.smc"
 OBJECT_DECLARE_SIMPLE_TYPE(AppleSMCState, APPLE_SMC_IOP)

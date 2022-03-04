@@ -26,8 +26,8 @@
 
 #include "qemu/osdep.h"
 #include "hw/arm/boot.h"
-#include "hw/arm/xnu_mem.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_mem.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 // pexpert/pexpert/arm64/boot.h
 #define xnu_arm64_kBootArgsRevision2 2 /* added boot_args.bootFlags */

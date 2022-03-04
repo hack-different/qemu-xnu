@@ -6,9 +6,9 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "sysemu/dma.h"
-#include "hw/arm/xnu.h"
-#include "hw/arm/xnu_dtb.h"
-#include "hw/arm/apple_sart.h"
+#include "hw/arm/apple/xnu.h"
+#include "hw/arm/apple/xnu_dtb.h"
+#include "hw/arm/apple/apple_sart.h"
 
 //#define DEBUG_SART
 

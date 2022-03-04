@@ -5,7 +5,7 @@
 #include "cpu.h"
 #include "exec/hwaddr.h"
 #include "qemu/queue.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 #include "hw/cpu/cluster.h"
 
 #define T8030_MAX_CPU 6

@@ -7,7 +7,7 @@
 #include "qom/object.h"
 #include "qemu/fifo32.h"
 #include "hw/spmi/spmi.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 
 #define TYPE_APPLE_SPMI     "apple.spmi"
 OBJECT_DECLARE_SIMPLE_TYPE(AppleSPMIState, APPLE_SPMI)

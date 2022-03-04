@@ -60,6 +60,11 @@
 QEMU_EXTERN_C int daemon(int, int);
 #endif
 
+// gcc doesn't like __unused, but has an alternate way with __attribute__
+#ifndef __unused
+#define __unused __attribute__((unused))
+#endif
+
 #ifdef _WIN32
 /* as defined in sdkddkver.h */
 #ifndef _WIN32_WINNT

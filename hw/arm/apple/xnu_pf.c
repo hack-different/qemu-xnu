@@ -1,5 +1,5 @@
-#include "hw/arm/xnu.h"
-#include "hw/arm/xnu_pf.h"
+#include "hw/arm/apple/xnu.h"
+#include "hw/arm/apple/xnu_pf.h"
 
 xnu_pf_range_t *xnu_pf_range_from_va(uint64_t va, uint64_t size)
 {

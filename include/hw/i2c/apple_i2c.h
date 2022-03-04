@@ -3,7 +3,7 @@
 
 #include "hw/sysbus.h"
 #include "qom/object.h"
-#include "hw/arm/xnu_dtb.h"
+#include "hw/arm/apple/xnu_dtb.h"
 #include "hw/i2c/bitbang_i2c.h"
 
 #define TYPE_APPLE_I2C "apple.i2c"

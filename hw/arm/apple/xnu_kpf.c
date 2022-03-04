@@ -1,5 +1,5 @@
-#include "hw/arm/xnu.h"
-#include "hw/arm/xnu_pf.h"
+#include "hw/arm/apple/xnu.h"
+#include "hw/arm/apple/xnu_pf.h"
 
 #define NOP 0xd503201f
 #define RET 0xd65f03c0

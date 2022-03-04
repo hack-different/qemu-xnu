@@ -1,25 +1,24 @@
 arm_ss = ss.source_set()
-arm_ss.add(files('boot.c'), fdt)
-arm_ss.add(when: 'CONFIG_APPLE_SOC', if_true: files(
-    's8000.c',
-    't8030.c',
-    't8030_cpu.c',
-    't8030_gxf.c',
-    'apple_a9.c',
-    'apple_sep.c',
-    'xnu_dtb.c',
-    'xnu_mem.c',
-    'xnu.c',
-    'xnu_pf.c',
-    'xnu_kpf.c')
-)
 
-arm_ss.add(when: 'CONFIG_APPLE_DART', if_true: files('apple_dart.c'))
-arm_ss.add(when: 'CONFIG_APPLE_SART', if_true: files('apple_sart.c'))
-arm_ss.add(when: 'TARGET_AARCH64', if_true: tasn1)
-arm_ss.add(when: 'CONFIG_PLATFORM_BUS', if_true: files('sysbus-fdt.c'))
+arm_ss.add(files('boot.c'))
+
+# ARM platforms and features
+arm_ss.add(when: 'CONFIG_ARM_V7M', if_true: files('armv7m.c'))
+arm_ss.add(when: 'CONFIG_ARM_SMMUV3', if_true: files('smmu-common.c', 'smmuv3.c'))
 arm_ss.add(when: 'CONFIG_ARM_VIRT', if_true: files('virt.c'))
 arm_ss.add(when: 'CONFIG_ACPI', if_true: files('virt-acpi-build.c'))
+arm_ss.add(when: 'CONFIG_ARMSSE', if_true: files('armsse.c'))
+
+# Linux device tree support
+arm_ss.add(fdt)
+
+# Apple ARM platform support
+if config_target.get('CONFIG_APPLE_SOC', 'n') == 'y'
+    subdir('apple')
+endif
+
+# Other SoC specific code
+arm_ss.add(when: 'CONFIG_PLATFORM_BUS', if_true: files('sysbus-fdt.c'))
 arm_ss.add(when: 'CONFIG_DIGIC', if_true: files('digic_boards.c'))
 arm_ss.add(when: 'CONFIG_EXYNOS4', if_true: files('exynos4_boards.c'))
 arm_ss.add(when: 'CONFIG_EMCRAFT_SF2', if_true: files('msf2-som.c'))
@@ -47,8 +46,6 @@ arm_ss.add(when: 'CONFIG_VERSATILE', if_true: files('versatilepb.c'))
 arm_ss.add(when: 'CONFIG_VEXPRESS', if_true: files('vexpress.c'))
 arm_ss.add(when: 'CONFIG_ZYNQ', if_true: files('xilinx_zynq.c'))
 arm_ss.add(when: 'CONFIG_SABRELITE', if_true: files('sabrelite.c'))
-
-arm_ss.add(when: 'CONFIG_ARM_V7M', if_true: files('armv7m.c'))
 arm_ss.add(when: 'CONFIG_EXYNOS4', if_true: files('exynos4210.c'))
 arm_ss.add(when: 'CONFIG_PXA2XX', if_true: files('pxa2xx.c', 'pxa2xx_gpio.c', 'pxa2xx_pic.c'))
 arm_ss.add(when: 'CONFIG_DIGIC', if_true: files('digic.c'))
@@ -70,9 +67,7 @@ arm_ss.add(when: 'CONFIG_MPS2', if_true: files('mps2.c'))
 arm_ss.add(when: 'CONFIG_MPS2', if_true: files('mps2-tz.c'))
 arm_ss.add(when: 'CONFIG_MSF2', if_true: files('msf2-soc.c'))
 arm_ss.add(when: 'CONFIG_MUSCA', if_true: files('musca.c'))
-arm_ss.add(when: 'CONFIG_ARMSSE', if_true: files('armsse.c'))
 arm_ss.add(when: 'CONFIG_FSL_IMX7', if_true: files('fsl-imx7.c', 'mcimx7d-sabre.c'))
-arm_ss.add(when: 'CONFIG_ARM_SMMUV3', if_true: files('smmu-common.c', 'smmuv3.c'))
 arm_ss.add(when: 'CONFIG_FSL_IMX6UL', if_true: files('fsl-imx6ul.c', 'mcimx6ul-evk.c'))
 arm_ss.add(when: 'CONFIG_NRF51_SOC', if_true: files('nrf51_soc.c'))
 
