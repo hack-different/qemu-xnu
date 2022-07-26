@@ -34,10 +34,25 @@
 #define xnu_arm64_kBootArgsVersion2 2
 #define xnu_arm64_BOOT_LINE_LENGTH 608
 
+
+#define	LC_SYMTAB           0x2
 #define LC_UNIXTHREAD       0x5
+#define	LC_DYSYMTAB         0xb
 #define LC_SEGMENT_64       0x19
 #define LC_SOURCE_VERSION   0x2A
 #define LC_BUILD_VERSION    0x32
+#define LC_REQ_DYLD         0x80000000
+#define LC_DYLD_CHAINED_FIXUPS (0x34 | LC_REQ_DYLD) /* used with linkedit_data_command */
+#define LC_FILESET_ENTRY      (0x35 | LC_REQ_DYLD) /* used with fileset_entry_command */
+
+struct symtab_command {
+	uint32_t	cmd;		/* LC_SYMTAB */
+	uint32_t	cmdsize;	/* sizeof(struct symtab_command) */
+	uint32_t	symoff;		/* symbol table offset */
+	uint32_t	nsyms;		/* number of symbol table entries */
+	uint32_t	stroff;		/* string table offset */
+	uint32_t	strsize;	/* string table size in bytes */
+};
 
 struct segment_command_64 { /* for 64-bit architectures */
     uint32_t    cmd;        /* LC_SEGMENT_64 */
@@ -52,6 +67,7 @@ struct segment_command_64 { /* for 64-bit architectures */
     uint32_t    nsects;     /* number of sections in segment */
     uint32_t    flags;      /* flags */
 };
+
 struct section_64 { /* for 64-bit architectures */
     char        sectname[16];   /* name of this section */
     char        segname[16];    /* segment this section goes in */
@@ -66,6 +82,20 @@ struct section_64 { /* for 64-bit architectures */
     uint32_t    reserved2;      /* reserved (for count or sizeof) */
     uint32_t    reserved3;      /* reserved */
 };
+
+#define SECTION_TYPE         0x000000ff /* 256 section types */
+#define S_NON_LAZY_SYMBOL_POINTERS  0x6 /* section with only non-lazy
+                                           symbol pointers */
+
+struct fileset_entry_command {
+    uint32_t        cmd;        /* LC_FILESET_ENTRY */
+    uint32_t        cmdsize;    /* includes id string */
+    uint64_t        vmaddr;     /* memory address of the dylib */
+    uint64_t        fileoff;    /* file offset of the dylib */
+    uint32_t        entry_id;   /* contained entry id */
+    uint32_t        reserved;   /* entry_id is 32-bits long, so this is the reserved padding */
+};
+
 struct source_version_command {
     uint32_t  cmd;  /* LC_SOURCE_VERSION */
     uint32_t  cmdsize;  /* 16 */
@@ -93,6 +123,10 @@ struct build_version_command {
 
 #define MACH_MAGIC_64   0xFEEDFACFu
 
+/* constants for the filetype field of mach_header_64 */
+#define MH_EXECUTE      0x2
+#define MH_FILESET      0xc
+
 struct mach_header_64 {
     uint32_t    magic;      /* mach magic number identifier */
     uint32_t /*cpu_type_t*/  cputype;    /* cpu specifier */
@@ -111,6 +145,22 @@ struct load_command {
     uint32_t cmdsize;   /* total size of command in bytes */
 };
 
+struct nlist_64 {
+    union {
+        uint32_t  n_strx; /* index into the string table */
+    } n_un;
+    uint8_t n_type;        /* type flag, see below */
+    uint8_t n_sect;        /* section number or NO_SECT */
+    uint16_t n_desc;       /* see <mach-o/stab.h> */
+    uint64_t n_value;      /* value of this symbol (or stab offset) */
+};
+
+#define	N_STAB	0xe0  /* if any of these bits set, a symbolic debugging entry */
+#define	N_PEXT	0x10  /* private external symbol bit */
+#define	N_TYPE	0x0e  /* mask for the type bits */
+#define	N_EXT	0x01  /* external symbol bit, set for external symbols */
+
+
 typedef struct xnu_arm64_video_boot_args {
     unsigned long v_baseAddr; /* Base address of video memory */
     unsigned long v_display;  /* Display Code (if Applicable */
@@ -121,15 +171,15 @@ typedef struct xnu_arm64_video_boot_args {
 } video_boot_args;
 
 typedef struct xnu_arm64_monitor_boot_args {
-    uint64_t    version;                        /* structure version - this is version 2 */
-    uint64_t    virtBase;                       /* virtual base of memory assigned to the monitor */
-    uint64_t    physBase;                       /* physical address corresponding to the virtual base */
-    uint64_t    memSize;                        /* size of memory assigned to the monitor */
-    uint64_t    kernArgs;                       /* physical address of the kernel boot_args structure */
-    uint64_t    kernEntry;                      /* kernel entrypoint */
-    uint64_t    kernPhysBase;                   /* physical base of the kernel's address space */
-    uint64_t    kernPhysSlide;                  /* offset from kernPhysBase to kernel load address */
-    uint64_t    kernVirtSlide;                  /* virtual slide applied to kernel at load time */
+    uint64_t    version;         /* structure version - this is version 2 */
+    uint64_t    virtBase;        /* virtual base of memory assigned to the monitor */
+    uint64_t    physBase;        /* physical address corresponding to the virtual base */
+    uint64_t    memSize;         /* size of memory assigned to the monitor */
+    uint64_t    kernArgs;        /* physical address of the kernel boot_args structure */
+    uint64_t    kernEntry;       /* kernel entrypoint */
+    uint64_t    kernPhysBase;    /* physical base of the kernel's address space */
+    uint64_t    kernPhysSlide;   /* offset from kernPhysBase to kernel load address */
+    uint64_t    kernVirtSlide;   /* virtual slide applied to kernel at load time */
 } monitor_boot_args;
 
 struct xnu_arm64_boot_args {
@@ -164,7 +214,7 @@ struct xnu_arm64_boot_args {
 
 #define EMBEDDED_PANIC_HEADER_CURRENT_VERSION 2
 #define EMBEDDED_PANIC_MAGIC 0x46554E4B /* FUNK */
-struct xnu_embedded_panic_header {
+struct QEMU_PACKED xnu_embedded_panic_header {
     uint32_t eph_magic;                /* EMBEDDED_PANIC_MAGIC if valid */
     uint32_t eph_crc;                  /* CRC of everything following the ph_crc in the header and the contents */
     uint32_t eph_version;              /* embedded_panic_header version */
@@ -186,9 +236,18 @@ struct xnu_embedded_panic_header {
     };
     char eph_os_version[EMBEDDED_PANIC_HEADER_OSVERSION_LEN];
     char eph_macos_version[EMBEDDED_PANIC_HEADER_OSVERSION_LEN];
-} __attribute__((packed));
+};
+
+typedef struct QEMU_PACKED xnu_iop_segment_range {
+    uint64_t phys;
+    uint64_t virt;
+    uint64_t remap;
+    uint32_t size;
+    uint32_t flag;
+} xnu_iop_segment_range;
 
 #define XNU_MAX_NVRAM_SIZE  (0xFFFF * 0x10)
+#define XNU_BNCH_SIZE       (32)
 
 typedef struct macho_boot_info {
     hwaddr entry;
@@ -205,9 +264,8 @@ typedef struct macho_boot_info {
     uint64_t nvram_size;
     char *ticket_data;
     uint64_t ticket_length;
+    uint8_t boot_nonce_hash[XNU_BNCH_SIZE];
 } *macho_boot_info_t;
-
-#define kCacheableView 0x400000000ULL
 
 struct mach_header_64 *macho_load_file(const char *filename);
 
@@ -227,6 +285,10 @@ void macho_highest_lowest(struct mach_header_64 *mh, uint64_t *lowaddr,
                           uint64_t *highaddr);
 
 void macho_text_base(struct mach_header_64 *mh, uint64_t *text_base);
+
+struct fileset_entry_command *macho_get_fileset(struct mach_header_64 *header, const char *entry);
+
+struct mach_header_64 *macho_get_fileset_header(struct mach_header_64 *header, const char *entry);
 
 struct segment_command_64* macho_get_segment(struct mach_header_64* header, const char* segname);
 
@@ -251,10 +313,13 @@ void macho_setup_bootargs(const char *name, AddressSpace *as,
                           hwaddr virt_base, hwaddr phys_base, hwaddr mem_size,
                           hwaddr top_of_kernel_data_pa, hwaddr dtb_va,
                           hwaddr dtb_size, video_boot_args v_bootargs,
-                          char *kern_args);
+                          const char *cmdline);
+
+void macho_allocate_segment_records(DTBNode *memory_map,
+                                    struct mach_header_64 *mh);
 
 hwaddr arm_load_macho(struct mach_header_64 *mh, AddressSpace *as, MemoryRegion *mem,
-                      const char *name, hwaddr phys_base, hwaddr virt_base);
+                      DTBNode *memory_map, hwaddr phys_base, hwaddr virt_slide);
 
 void macho_map_raw_file(const char *filename, AddressSpace *as, MemoryRegion *mem,
                          const char *name, hwaddr file_pa, uint64_t *size);
@@ -264,11 +329,15 @@ void macho_load_raw_file(const char *filename, AddressSpace *as, MemoryRegion *m
 
 DTBNode *load_dtb_from_file(char *filename);
 
+void macho_populate_dtb(DTBNode *root, macho_boot_info_t info);
+
 void macho_load_dtb(DTBNode *root, AddressSpace *as, MemoryRegion *mem,
                     const char *name, macho_boot_info_t info);
 
-void macho_load_trustcache(const char *filename, AddressSpace *as, MemoryRegion *mem,
-                            hwaddr pa, uint64_t *size);
+uint8_t *load_trustcache_from_file(const char *filename, uint64_t *size);
+void macho_load_trustcache(void *trustcache, uint64_t size,
+                           AddressSpace *as, MemoryRegion *mem, hwaddr pa);
+
 void macho_load_ramdisk(const char *filename, AddressSpace *as, MemoryRegion *mem,
                             hwaddr pa, uint64_t *size);
 #endif

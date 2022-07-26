@@ -68,3 +68,9 @@ config SIFIVE_UART
 
 config GOLDFISH_TTY
     bool
+
+config SHAKTI_UART
+    bool
+
+config APPLE_UART
+    bool

@@ -112,10 +112,17 @@ static bool kpf_amfi_callback(struct xnu_pf_patch *patch, uint32_t *opcode_strea
      *  so that AMFI thinks that everything is in trustcache
      * there are two different versions of the trustcache function
      *  lookup_in_trust_cache_module has cdhash in x1
-     *  lookup_in_static_trust_cache has cdhash in x0 
+     *  lookup_in_static_trust_cache has cdhash in x0
      * The former one requires [x2] = 2 and [x3] = 0
      * both of them are patched to return 1
      */
+    if (((opcode_stream[-1] & 0xFF000000) != 0x91000000) &&
+         ((opcode_stream[-2] & 0xFF000000) != 0x91000000)) {
+         /* add x*
+          * ldrb (optional and only on iOS 15.5b4+)
+          */
+         return false;
+    }
     bool found_something = false;
     /* find ldrb w*, [x*, 0xb] */
     uint32_t *ldrb = find_next_insn(opcode_stream, 256, 0x39402c00, 0xfffffc00);
@@ -140,27 +147,37 @@ static bool kpf_amfi_callback(struct xnu_pf_patch *patch, uint32_t *opcode_strea
         }
     }
 
-    fprintf(stderr, "%s: start @ 0x%llx\n", __func__,
-            ptov_static((hwaddr)start));
-
     pac = find_prev_insn(start, 5, PACIBSP, 0xffffffff) != NULL;
     switch (cdhash_param) {
     case 0: {
-        *(start++) = 0x52800020; /* MOV W0, 1 */
+        /* ADRP x8, * */
+        uint32_t *adrp = find_prev_insn(start, 10, 0x90000008, 0x9f00001f);
+        if (adrp) {
+            start = adrp;
+        }
+        fprintf(stderr, "%s: Found lookup_in_static_trust_cache @ 0x%llx\n",
+                __func__, ptov_static((hwaddr)start));
+        /* XXX: allows amfid to do its work
+         * this also allows amfid impersonation
+         */
+        *(start++) = 0x52802020; /* MOV W0, 0x101 */
         *(start++) = (pac ? RETAB : RET);
         found_something = true;
-        puts("kpf_amfi_callback: Found lookup_in_trust_cache_module");
         break;
     }
     case 1:
+        fprintf(stderr, "%s: Found lookup_in_trust_cache_module @ 0x%llx\n",
+                __func__, ptov_static((hwaddr)start));
         *(start++) = 0x52800040; /* mov w0, 2 */
         *(start++) = 0x39000040; /* strb w0, [x2] */
-        *(start++) = 0x52800000; /* mov w0, 0 */
+        /* XXX: allows amfid to do its work
+         * this also allows amfid impersonation
+         */
+        *(start++) = 0x52800020; /* mov w0, 1 */
         *(start++) = 0x39000060; /* strb w0, [x3] */
         *(start++) = 0x52800020; /* MOV W0, 1 */
         *(start++) = (pac ? RETAB : RET);
         found_something = true;
-        puts("kpf_amfi_callback: Found lookup_in_static_trust_cache");
         break;
     default:
         puts("kpf_amfi_callback: Found unexpected prototype");
@@ -188,13 +205,11 @@ static void kpf_amfi_patch(xnu_pf_patchset_t *xnu_text_exec_patchset)
      * /x 0000009100028052000000d30000009b:000000FF00FFFFFF000000FF000000FF
      */
     uint64_t matches[] = {
-            0x91000000, // add x*
             0x52800200, // mov w*, 0x16
             0xd3000000, // lsr *
             0x9b000000  // madd *
     };
     uint64_t masks[] = {
-            0xFF000000,
             0xFFFFFF00,
             0xFF000000,
             0xFF000000
@@ -342,25 +357,21 @@ static void kpf_aks_kext_patches(xnu_pf_patchset_t *patchset)
     /* TODO: SEP
      * AppleKeyStoreUserClient::handleUserClientCommandGated:
      * Example from iPhone 11, iOS 14.0b5 (18A5351d)
-     * 0xfffffff008f6f83c      57588052       mov w23, 0x2c2
-     * 0xfffffff008f6f840      1700bc72       movk w23, 0xe000, lsl 16
-     * 0xfffffff008f6f844      1fae01f1       cmp x16, 0x6b
-     * 0xfffffff008f6f848      10929f9a       csel x16, x16, xzr, ls
-     * 0xfffffff008f6f84c      b1ac0210       adr x17, 0xfffffff008f74de0
+     * 0xfffffff008f6f97c      28a5e8f2       movk x8, 0x4529, lsl 48 ; ')E'
+     * 0xfffffff008f6f980      e10316aa       mov x1, x22
+     * 0xfffffff008f6f984      02008052       mov w2, 0
+     * 0xfffffff008f6f988      030080d2       mov x3, 0
+     * 0xfffffff008f6f98c      28093fd7       blraa x9, x8
+     *
+     * the movk we are matching is the PAC discriminator for IOService::open
+     * Find this patch in com.apple.driver.AppleSEPKeyStore.__TEXT_EXEC.__text
+     *  in radare2: /x 20a5e8f2:e0ffffff
      */
     uint64_t i_matches[] = {
-            0x52805840, /* mov x*, 0x2c2 */
-            0x72bc0000, /* movk w*, 0xe000, lsl 16 */
-            0xf100001f, /* cmp x*, #* */
-            0x9a809000, /* csel x*, x*, x*, LS */
-            0x10000000, /* adr x*, * */
+            0xf2e8a520, /* movk x*, 0x4529, lsl 48 */
     };
     uint64_t i_masks[] = {
             0xffffffe0,
-            0xffffffe0,
-            0xffc0001f,
-            0xffe0fc00,
-            0xff000000,
     };
     xnu_pf_maskmatch(patchset, "AKSUC_handle", i_matches, i_masks,
                      sizeof(i_matches)/sizeof(uint64_t), true, (void *)kpf_aksuc_handle);
@@ -370,10 +381,9 @@ void kpf(void)
 {
     struct mach_header_64 *hdr = xnu_header;
     xnu_pf_patchset_t *xnu_text_exec_patchset = xnu_pf_patchset_create(XNU_PF_ACCESS_32BIT);
-    g_autofree xnu_pf_range_t *text_exec_range = xnu_pf_section(hdr, "__TEXT_EXEC", "__text");
+    g_autofree xnu_pf_range_t *text_exec_range = xnu_pf_get_actual_text_exec(hdr);
     xnu_pf_patchset_t *xnu_ppl_text_patchset = xnu_pf_patchset_create(XNU_PF_ACCESS_32BIT);
     g_autofree xnu_pf_range_t *ppltext_exec_range = xnu_pf_section(hdr, "__PPLTEXT", "__text");
-    struct mach_header_64 *first_kext = xnu_pf_get_first_kext(hdr);
 
     xnu_pf_patchset_t *apfs_patchset;
     struct mach_header_64 *apfs_header;
@@ -387,22 +397,6 @@ void kpf(void)
     xnu_pf_patchset_t *aks_patchset;
     g_autofree xnu_pf_range_t *aks_text_exec_range;
 
-    if (first_kext) {
-        g_autofree xnu_pf_range_t *first_kext_text_exec_range = xnu_pf_section(first_kext, "__TEXT_EXEC", "__text");
-
-        if (first_kext_text_exec_range) {
-            uint64_t text_exec_end_real;
-            uint64_t text_exec_end = text_exec_end_real = ((uint64_t) (text_exec_range->va)) + text_exec_range->size;
-            uint64_t first_kext_p = ((uint64_t) (first_kext_text_exec_range->va));
-
-            if (text_exec_end > first_kext_p
-                && first_kext_text_exec_range->va > text_exec_range->va) {
-                text_exec_end = first_kext_p;
-            }
-
-            text_exec_range->size -= text_exec_end_real - text_exec_end;
-        }
-    }
 
     apfs_patchset = xnu_pf_patchset_create(XNU_PF_ACCESS_32BIT);
     apfs_header = xnu_pf_get_kext_header(hdr, "com.apple.filesystems.apfs");

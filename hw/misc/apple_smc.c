@@ -26,6 +26,33 @@ do { qemu_log_mask(LOG_GUEST_ERROR, "SMC: message:" \
 #define SMC_LOG_MSG(ep, msg) do {} while (0)
 #endif
 
+#define SMC_MAKE_IDENTIFIER(A, B, C, D)  \
+((uint32_t)(((uint32_t)(A) << 24U) | ((uint32_t)(B) << 16U) | \
+                                     ((uint32_t)(C) << 8U) | (uint32_t)(D)))
+#define SMC_MAKE_KEY_TYPE(A, B, C, D) SMC_MAKE_IDENTIFIER ((A), (B), (C), (D))
+
+enum {
+    SmcKeyTypeFlag = SMC_MAKE_KEY_TYPE('f', 'l', 'a', 'g'),
+    SmcKeyTypeHex = SMC_MAKE_KEY_TYPE('h', 'e', 'x', '_'),
+    SmcKeyTypeUint8 = SMC_MAKE_KEY_TYPE('u', 'i', '8', ' '),
+    SmcKeyTypeUint16 = SMC_MAKE_KEY_TYPE('u', 'i', '1', '6'),
+    SmcKeyTypeUint32 = SMC_MAKE_KEY_TYPE('u', 'i', '3', '2'),
+    SmcKeyTypeClh = SMC_MAKE_KEY_TYPE('{', 'c', 'l', 'h'),
+};
+
+enum {
+    SmcKeyNKEY = SMC_MAKE_IDENTIFIER('#', 'K', 'E', 'Y'),
+    SmcKeyCLKH = SMC_MAKE_IDENTIFIER('C', 'L', 'K', 'H'),
+    SmcKeyRGEN = SMC_MAKE_IDENTIFIER('R', 'G', 'E', 'N'),
+    SmcKeyMBSE = SMC_MAKE_IDENTIFIER('M', 'B', 'S', 'E'),
+    SmcKeyLGPB = SMC_MAKE_IDENTIFIER('L', 'G', 'P', 'B'),
+    SmcKeyLGPE = SMC_MAKE_IDENTIFIER('L', 'G', 'P', 'E'),
+    SmcKeyNESN = SMC_MAKE_IDENTIFIER('N', 'E', 'S', 'N'),
+    SmcKeyADC_ = SMC_MAKE_IDENTIFIER('a', 'D', 'C', '#'),
+    SmcKeyAC_N = SMC_MAKE_IDENTIFIER('A', 'C', '-', 'N'),
+    SmcKeyBNCB = SMC_MAKE_IDENTIFIER('B', 'N', 'C', 'B'),
+};
+
 enum smc_command {
     SMC_READ_KEY = 0x10,
     SMC_WRITE_KEY = 0x11,
@@ -65,6 +92,11 @@ enum smc_notify_type {
     kSMCHIDEventNotify = 'r',
     kSMCBatteryAuthNotify = 's',
     kSMCGGFwUpdateNotify = 't',
+};
+
+enum smc_notify {
+    kSMCNotifySMCPanicDone = 0xA,
+    kSMCNotifySMCPanicProgress = 0x22,
 };
 
 #define kSMCKeyEndpoint     1
@@ -204,14 +236,14 @@ static uint8_t smc_key_reject_write(AppleSMCState *s, smc_key *k,
     return kSMCKeyNotWritable;
 }
 
-static uint8_t smc_key_noop_read(AppleSMCState *s, smc_key *k,
-                                 void *payload, uint8_t length)
+static uint8_t G_GNUC_UNUSED smc_key_noop_read(AppleSMCState *s, smc_key *k,
+                                               void *payload, uint8_t length)
 {
     return kSMCSuccess;
 }
 
-static uint8_t smc_key_copy_write(AppleSMCState *s, smc_key *k,
-                                  void *payload, uint8_t length)
+static uint8_t G_GNUC_UNUSED smc_key_copy_write(AppleSMCState *s, smc_key *k,
+                                                void *payload, uint8_t length)
 {
     smc_set_key(s, k->key, length, payload);
     return kSMCSuccess;
@@ -235,10 +267,11 @@ static uint8_t smc_key_mbse_write(AppleSMCState *s, smc_key *k,
     }
     value = *(uint32_t *)payload;
     switch (value) {
-    case 'off1':
+    case SMC_MAKE_IDENTIFIER('o', 'f', 'f', 'w'):
+    case SMC_MAKE_IDENTIFIER('o', 'f', 'f', '1'):
         qemu_system_shutdown_request(SHUTDOWN_CAUSE_GUEST_SHUTDOWN);
         return kSMCSuccess;
-    case 'susp':
+    case SMC_MAKE_IDENTIFIER('s', 'u', 's', 'p'):
         /*
          * XXX: iOS actually suspends/deep sleeps when "turn off",
          * It sets a RTC wake alarm before suspending
@@ -248,11 +281,27 @@ static uint8_t smc_key_mbse_write(AppleSMCState *s, smc_key *k,
         /* qemu_system_suspend_request(); */
         qemu_system_shutdown_request(SHUTDOWN_CAUSE_GUEST_SHUTDOWN);
         return kSMCSuccess;
-    case 'rest':
+    case SMC_MAKE_IDENTIFIER('r', 'e', 's', 't'):
         /* Reboot is handled by wdt */
         return kSMCSuccess;
-    case 'slpw':
+    case SMC_MAKE_IDENTIFIER('s', 'l', 'p', 'w'):
         return kSMCSuccess;
+    case SMC_MAKE_IDENTIFIER('p', 'a', 'n', 'b'): {
+        key_response r = { 0 };
+        r.status = SMC_NOTIFICATION;
+        r.response[2] = kSMCNotifySMCPanicProgress;
+        r.response[3] = kSMCSystemStateNotify;
+        apple_mbox_send_message(s->mbox, kSMCKeyEndpoint, r.raw);
+        return kSMCSuccess;
+    }
+    case SMC_MAKE_IDENTIFIER('p', 'a', 'n', 'e'): {
+        key_response r = { 0 };
+        r.status = SMC_NOTIFICATION;
+        r.response[2] = kSMCNotifySMCPanicDone;
+        r.response[3] = kSMCSystemStateNotify;
+        apple_mbox_send_message(s->mbox, kSMCKeyEndpoint, r.raw);
+        return kSMCSuccess;
+    }
     default:
         return kSMCBadFuncParameter;
     }
@@ -278,13 +327,11 @@ static uint8_t smc_key_nesn_write(AppleSMCState *s, smc_key *k,
                                   void *payload, uint8_t length)
 {
     key_response r = { 0 };
+    #if 0
     uint8_t *p = (uint8_t *)payload;
-    /* fprintf(stderr, "NESN: payload: 0x%x\n", *(uint32_t *)payload); */
+    fprintf(stderr, "NESN: payload: 0x%x\n", *(uint32_t *)payload);
+    #endif
     smc_set_key(s, k->key, length, payload);
-    r.status = SMC_NOTIFICATION;
-    r.response[2] = 0xA; /* kSMCNotifySMCPanicDone */
-    r.response[3] = kSMCSystemStateNotify;
-    apple_mbox_send_message(s->mbox, kSMCKeyEndpoint, r.raw);
     return kSMCSuccess;
 }
 
@@ -334,6 +381,7 @@ static void apple_smc_handle_key_endpoint(void *opaque,
             r.status = kSMCSuccess;
         }
         r.ui8TagAndId = kmsg->ui8TagAndId;
+        r.length = kmsg->length;
         apple_mbox_send_message(s->mbox, ep, r.raw);
         break;
     }
@@ -412,11 +460,7 @@ static const MemoryRegionOps ascv2_core_reg_ops = {
 static const struct AppleMboxOps smc_mailbox_ops = {
 };
 
-static void apple_smc_set_irq(void *opaque, int irq_num, int level)
-{
-}
-
-SysBusDevice *apple_smc_create(DTBNode *node, uint32_t build_version)
+SysBusDevice *apple_smc_create(DTBNode *node, uint32_t protocol_version)
 {
     DeviceState  *dev;
     AppleSMCState *s;
@@ -424,32 +468,15 @@ SysBusDevice *apple_smc_create(DTBNode *node, uint32_t build_version)
     DTBNode *child;
     DTBProp *prop;
     uint64_t *reg;
-    uint32_t protocol_version = 0;
-    int i;
     uint32_t data;
-    struct segment_range {
-        uint64_t phys;
-        uint64_t virt;
-        uint64_t remap;
-        uint32_t size;
-        uint32_t flag;
-    };
-    struct segment_range segrange[2] = { 0 };
 
     dev = qdev_new(TYPE_APPLE_SMC_IOP);
     s = APPLE_SMC_IOP(dev);
     sbd = SYS_BUS_DEVICE(dev);
 
-    switch (BUILD_VERSION_MAJOR(build_version)) {
-        case 14:
-            protocol_version = 11;
-            break;
-        case 15:
-            protocol_version = 12;
-            break;
-        default:
-            break;
-    }
+
+    child = find_dtb_node(node, "iop-smc-nub");
+    assert(child);
 
     prop = find_dtb_prop(node, "reg");
     assert(prop);
@@ -473,12 +500,11 @@ SysBusDevice *apple_smc_create(DTBNode *node, uint32_t build_version)
                           TYPE_APPLE_SMC_IOP ".ascv2-core-reg", reg[3]);
     sysbus_init_mmio(sbd, s->iomems[1]);
 
-    prop->value = g_realloc(prop->value, prop->length + 16);
-    prop->length += 16;
-    reg = (uint64_t *)prop->value;
-    s->sram_addr = 0x23fe60000; /* size: 0x4000 */
-    reg[4] = 0x3fe60000;
-    reg[5] = 0x4000;
+    prop = find_dtb_prop(child, "sram-addr");
+    assert(prop != NULL);
+    assert(prop->length = 8);
+
+    s->sram_addr = *(uint64_t *)prop->value;
     s->iomems[2] = g_new(MemoryRegion, 1);
     memory_region_init_ram_device_ptr(s->iomems[2], OBJECT(dev),
                                       TYPE_APPLE_SMC_IOP ".sram",
@@ -487,34 +513,10 @@ SysBusDevice *apple_smc_create(DTBNode *node, uint32_t build_version)
 
     sysbus_pass_irq(sbd, SYS_BUS_DEVICE(s->mbox));
 
-    child = find_dtb_node(node, "iop-smc-nub");
-    assert(child);
-
     data = 1;
     set_dtb_prop(child, "pre-loaded", 4, (uint8_t *)&data);
     set_dtb_prop(child, "running", 4, (uint8_t *)&data);
 
-    prop = find_dtb_prop(child, "region-base");
-    *(uint64_t *)prop->value = 0x23fe00000;
-
-    prop = find_dtb_prop(child, "region-size");
-    *(uint64_t *)prop->value = 0x80000;
-
-    set_dtb_prop(child, "segment-names", 14, (uint8_t *)"__TEXT;__DATA");
-
-    segrange[0].phys = 0x23fe00000;
-    segrange[0].virt = 0x0;
-    segrange[0].remap = 0x23fe00000;
-    segrange[0].size = 0x30000;
-    segrange[0].flag = 0x1;
-
-    segrange[1].phys = 0x23fe30000;
-    segrange[1].virt = 0x30000;
-    segrange[1].remap = 0x23fe30000;
-    segrange[1].size = 0x30000;
-    segrange[1].flag = 0x0;
-
-    set_dtb_prop(child, "segment-ranges", 64, (uint8_t *)segrange);
     QTAILQ_INIT(&s->keys);
 
     return sbd;
@@ -526,25 +528,35 @@ static void apple_smc_realize(DeviceState *dev, Error **errp)
     uint8_t data[8] = {0x00, 0x00, 0x70, 0x80, 0x00, 0x01, 0x19, 0x40};
     uint64_t value;
 
-    smc_create_key_func(s, '#KEY', 4, bswap32('ui32'), SMC_ATTR_LITTLE_ENDIAN,
+    smc_create_key_func(s, SmcKeyNKEY, 4, SmcKeyTypeUint32,
+                        SMC_ATTR_LITTLE_ENDIAN,
                         &smc_key_count_read, &smc_key_reject_write);
 
-    smc_create_key(s, 'CLKH', 8, 0x7b636c68, SMC_ATTR_LITTLE_ENDIAN, data);
+    smc_create_key(s, SmcKeyCLKH, 8, SmcKeyTypeClh,
+                   SMC_ATTR_LITTLE_ENDIAN, data);
 
     data[0] = 3;
-    smc_create_key(s, 'RGEN', 1, bswap32('ui8 '), SMC_ATTR_LITTLE_ENDIAN, data);
+    smc_create_key(s, SmcKeyRGEN, 1, SmcKeyTypeUint8,
+                   SMC_ATTR_LITTLE_ENDIAN, data);
 
     value = 0;
-    smc_create_key(s, 'aDC#', 4, bswap32('ui32'), SMC_ATTR_LITTLE_ENDIAN, &value);
+    smc_create_key(s, SmcKeyADC_, 4, SmcKeyTypeUint32,
+                   SMC_ATTR_LITTLE_ENDIAN, &value);
 
-    smc_create_key_func(s, 'MBSE', 4, bswap32('hex_'), SMC_ATTR_LITTLE_ENDIAN,
+    smc_create_key_func(s, SmcKeyMBSE, 4, SmcKeyTypeHex,
+                        SMC_ATTR_LITTLE_ENDIAN,
                         &smc_key_reject_read, &smc_key_mbse_write);
 
-    smc_create_key_func(s, 'LGPB', 1, bswap32('flag'), SMC_ATTR_LITTLE_ENDIAN,
-                        &smc_key_reject_read, &smc_key_lgpb_write);
-    smc_create_key_func(s, 'LGPE', 1, bswap32('flag'), SMC_ATTR_LITTLE_ENDIAN,
-                        &smc_key_noop_read, &smc_key_lgpe_write);
-    smc_create_key_func(s, 'NESN', 4, bswap32('hex_'), SMC_ATTR_LITTLE_ENDIAN,
+#if 0
+    smc_create_key_func(s, SmcKeyLGPB, 1, SmcKeyTypeFlag,
+                        SMC_ATTR_LITTLE_ENDIAN,
+                        NULL, &smc_key_lgpb_write);
+    smc_create_key_func(s, SmcKeyLGPE, 1, SmcKeyTypeFlag,
+                        SMC_ATTR_LITTLE_ENDIAN,
+                        NULL, &smc_key_lgpe_write);
+#endif
+    smc_create_key_func(s, SmcKeyNESN, 4, SmcKeyTypeHex,
+                        SMC_ATTR_LITTLE_ENDIAN,
                         &smc_key_reject_read, &smc_key_nesn_write);
 
     sysbus_realize(SYS_BUS_DEVICE(s->mbox), errp);

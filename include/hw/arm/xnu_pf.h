@@ -19,9 +19,6 @@ typedef struct xnu_pf_patch {
     struct xnu_pf_patch *next_patch;
     uint8_t pf_data[0];
     const char  *name;
-
-    //            patch->pf_match(XNU_PF_ACCESS_32BIT, reads, &stream[index], &dstream[index]);
-
 } xnu_pf_patch_t;
 
 typedef bool (*xnu_pf_patch_callback)(struct xnu_pf_patch *patch, void *cacheable_stream);
@@ -52,7 +49,7 @@ void xnu_pf_disable_patch(xnu_pf_patch_t *patch);
 
 void xnu_pf_enable_patch(xnu_pf_patch_t *patch);
 
-struct mach_header_64 *xnu_pf_get_first_kext(struct mach_header_64 *kheader);
+xnu_pf_range_t *xnu_pf_get_actual_text_exec(struct mach_header_64 *header);
 
 xnu_pf_patch_t *xnu_pf_ptr_to_data(xnu_pf_patchset_t *patchset, uint64_t slide,
                                    xnu_pf_range_t *range, void *data, size_t datasz,

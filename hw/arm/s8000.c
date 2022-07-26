@@ -66,6 +66,7 @@
 
 #define S8000_GPIO_HOLD_KEY (97)
 #define S8000_GPIO_MENU_KEY (96)
+#define S8000_GPIO_SPI0_CS  (106)
 #define S8000_GPIO_FORCE_DFU (123)
 #define S8000_GPIO_DFU_STATUS (136)
 
@@ -450,6 +451,7 @@ static void s8000_create_i2c(MachineState *machine, const char *name)
 static void s8000_create_spi0(MachineState *machine)
 {
     DeviceState *spi = NULL;
+    DeviceState *gpio = NULL;
     S8000MachineState *tms = S8000_MACHINE(machine);
     const char *name = "spi0";
 
@@ -462,10 +464,12 @@ static void s8000_create_spi0(MachineState *machine)
 
     sysbus_mmio_map(SYS_BUS_DEVICE(spi), 0, tms->soc_base_pa + S8000_SPI0_BASE);
 
-    /* The second sysbus IRQ is the cs line */
-    /* TODO: Connect this to gpio over spi_cs0? */
     sysbus_connect_irq(SYS_BUS_DEVICE(spi), 0,
                        qdev_get_gpio_in(DEVICE(tms->aic), S8000_SPI0_IRQ));
+    /* The second sysbus IRQ is the cs line */
+    gpio = DEVICE(object_property_get_link(OBJECT(machine), "gpio", &error_fatal));
+    qdev_connect_gpio_out(gpio, S8000_GPIO_SPI0_CS,
+                          qdev_get_gpio_in_named(spi, SSI_GPIO_CS, 0));
 }
 
 static void s8000_create_spi(MachineState *machine, const char *name)
@@ -691,7 +695,9 @@ static void apple_a9_reset(void *opaque)
         AppleA9State *tcpu = (AppleA9State *)object_dynamic_cast(OBJECT(cpu),
                                                                TYPE_APPLE_A9);
         if (tcpu) {
-            ARM_CPU(cpu)->rvbar = tms->bootinfo.entry & ~0xfff;
+            object_property_set_int(OBJECT(cpu), "rvbar",
+                                    tms->bootinfo.entry & ~0xfff,
+                                    &error_abort);
             cpu_reset(cpu);
             if (!found_first) {
                 found_first = true;
@@ -719,7 +725,8 @@ static void s8000_machine_reset(MachineState* machine)
     apple_a9_reset(tms);
 
     gpio = DEVICE(object_property_get_link(OBJECT(machine), "gpio", &error_fatal));
-    qemu_irq_raise(qdev_get_gpio_in(gpio, S8000_GPIO_FORCE_DFU));
+
+    qemu_set_irq(qdev_get_gpio_in(gpio, S8000_GPIO_FORCE_DFU), tms->force_dfu);
 }
 
 static void s8000_machine_init_done(Notifier *notifier, void *data)
@@ -785,6 +792,25 @@ static void s8000_machine_init(MachineState *machine)
     qemu_add_machine_init_done_notifier(&tms->init_done_notifier);
 }
 
+static void s8000_set_force_dfu(Object *obj, const char *value, Error **errp)
+{
+    S8000MachineState *tms = S8000_MACHINE(obj);
+
+    if (!strcmp(value, "true")
+        || strtoul(value, NULL, 0)) {
+        tms->force_dfu = true;
+    } else {
+        tms->force_dfu = false;
+    }
+}
+
+static char *s8000_get_force_dfu(Object *obj, Error **errp)
+{
+    S8000MachineState *tms = S8000_MACHINE(obj);
+
+    return g_strdup(tms->force_dfu ? "true" : "false");
+}
+
 static void s8000_machine_class_init(ObjectClass *klass, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(klass);
@@ -801,6 +827,12 @@ static void s8000_machine_class_init(ObjectClass *klass, void *data)
     mc->no_parallel = 1;
     mc->default_cpu_type = TYPE_APPLE_A9;
     mc->minimum_page_bits = 14;
+
+    object_class_property_add_str(klass, "force-dfu",
+                                  s8000_get_force_dfu,
+                                  s8000_set_force_dfu);
+    object_class_property_set_description(klass, "force-dfu",
+                                          "Set FORCE_DFU pin state");
 }
 
 static const TypeInfo s8000_machine_info = {

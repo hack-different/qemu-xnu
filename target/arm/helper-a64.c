@@ -32,9 +32,9 @@
 #include "exec/cpu_ldst.h"
 #include "qemu/int128.h"
 #include "qemu/atomic128.h"
-#include "tcg/tcg.h"
 #include "fpu/softfloat.h"
 #include <zlib.h> /* For crc32 */
+#include "WKdm.h"
 
 /* C2.4.7 Multiply and divide */
 /* special cases for 0 and LLONG_MIN are mandated by the standard */
@@ -84,12 +84,14 @@ void HELPER(msr_i_daifset)(CPUARMState *env, uint32_t imm)
 {
     daif_check(env, 0x1e, imm, GETPC());
     env->daif |= (imm << 6) & PSTATE_DAIF;
+    arm_rebuild_hflags(env);
 }
 
 void HELPER(msr_i_daifclear)(CPUARMState *env, uint32_t imm)
 {
     daif_check(env, 0x1f, imm, GETPC());
     env->daif &= ~((imm << 6) & PSTATE_DAIF);
+    arm_rebuild_hflags(env);
 }
 
 /* Convert a softfloat float_relation_ (as returned by
@@ -513,37 +515,19 @@ uint64_t HELPER(paired_cmpxchg64_le)(CPUARMState *env, uint64_t addr,
     uintptr_t ra = GETPC();
     uint64_t o0, o1;
     bool success;
-
-#ifdef CONFIG_USER_ONLY
-    /* ??? Enforce alignment.  */
-    uint64_t *haddr = g2h(env_cpu(env), addr);
-
-    set_helper_retaddr(ra);
-    o0 = ldq_le_p(haddr + 0);
-    o1 = ldq_le_p(haddr + 1);
-    oldv = int128_make128(o0, o1);
-
-    success = int128_eq(oldv, cmpv);
-    if (success) {
-        stq_le_p(haddr + 0, int128_getlo(newv));
-        stq_le_p(haddr + 1, int128_gethi(newv));
-    }
-    clear_helper_retaddr();
-#else
     int mem_idx = cpu_mmu_index(env, false);
-    TCGMemOpIdx oi0 = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
-    TCGMemOpIdx oi1 = make_memop_idx(MO_LEQ, mem_idx);
+    MemOpIdx oi0 = make_memop_idx(MO_LEUQ | MO_ALIGN_16, mem_idx);
+    MemOpIdx oi1 = make_memop_idx(MO_LEUQ, mem_idx);
 
-    o0 = helper_le_ldq_mmu(env, addr + 0, oi0, ra);
-    o1 = helper_le_ldq_mmu(env, addr + 8, oi1, ra);
+    o0 = cpu_ldq_le_mmu(env, addr + 0, oi0, ra);
+    o1 = cpu_ldq_le_mmu(env, addr + 8, oi1, ra);
     oldv = int128_make128(o0, o1);
 
     success = int128_eq(oldv, cmpv);
     if (success) {
-        helper_le_stq_mmu(env, addr + 0, int128_getlo(newv), oi1, ra);
-        helper_le_stq_mmu(env, addr + 8, int128_gethi(newv), oi1, ra);
+        cpu_stq_le_mmu(env, addr + 0, int128_getlo(newv), oi1, ra);
+        cpu_stq_le_mmu(env, addr + 8, int128_gethi(newv), oi1, ra);
     }
-#endif
 
     return !success;
 }
@@ -555,12 +539,12 @@ uint64_t HELPER(paired_cmpxchg64_le_parallel)(CPUARMState *env, uint64_t addr,
     uintptr_t ra = GETPC();
     bool success;
     int mem_idx;
-    TCGMemOpIdx oi;
+    MemOpIdx oi;
 
     assert(HAVE_CMPXCHG128);
 
     mem_idx = cpu_mmu_index(env, false);
-    oi = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
+    oi = make_memop_idx(MO_LE | MO_128 | MO_ALIGN, mem_idx);
 
     cmpv = int128_make128(env->exclusive_val, env->exclusive_high);
     newv = int128_make128(new_lo, new_hi);
@@ -583,37 +567,19 @@ uint64_t HELPER(paired_cmpxchg64_be)(CPUARMState *env, uint64_t addr,
     uintptr_t ra = GETPC();
     uint64_t o0, o1;
     bool success;
-
-#ifdef CONFIG_USER_ONLY
-    /* ??? Enforce alignment.  */
-    uint64_t *haddr = g2h(env_cpu(env), addr);
-
-    set_helper_retaddr(ra);
-    o1 = ldq_be_p(haddr + 0);
-    o0 = ldq_be_p(haddr + 1);
-    oldv = int128_make128(o0, o1);
-
-    success = int128_eq(oldv, cmpv);
-    if (success) {
-        stq_be_p(haddr + 0, int128_gethi(newv));
-        stq_be_p(haddr + 1, int128_getlo(newv));
-    }
-    clear_helper_retaddr();
-#else
     int mem_idx = cpu_mmu_index(env, false);
-    TCGMemOpIdx oi0 = make_memop_idx(MO_BEQ | MO_ALIGN_16, mem_idx);
-    TCGMemOpIdx oi1 = make_memop_idx(MO_BEQ, mem_idx);
+    MemOpIdx oi0 = make_memop_idx(MO_BEUQ | MO_ALIGN_16, mem_idx);
+    MemOpIdx oi1 = make_memop_idx(MO_BEUQ, mem_idx);
 
-    o1 = helper_be_ldq_mmu(env, addr + 0, oi0, ra);
-    o0 = helper_be_ldq_mmu(env, addr + 8, oi1, ra);
+    o1 = cpu_ldq_be_mmu(env, addr + 0, oi0, ra);
+    o0 = cpu_ldq_be_mmu(env, addr + 8, oi1, ra);
     oldv = int128_make128(o0, o1);
 
     success = int128_eq(oldv, cmpv);
     if (success) {
-        helper_be_stq_mmu(env, addr + 0, int128_gethi(newv), oi1, ra);
-        helper_be_stq_mmu(env, addr + 8, int128_getlo(newv), oi1, ra);
+        cpu_stq_be_mmu(env, addr + 0, int128_gethi(newv), oi1, ra);
+        cpu_stq_be_mmu(env, addr + 8, int128_getlo(newv), oi1, ra);
     }
-#endif
 
     return !success;
 }
@@ -625,12 +591,12 @@ uint64_t HELPER(paired_cmpxchg64_be_parallel)(CPUARMState *env, uint64_t addr,
     uintptr_t ra = GETPC();
     bool success;
     int mem_idx;
-    TCGMemOpIdx oi;
+    MemOpIdx oi;
 
     assert(HAVE_CMPXCHG128);
 
     mem_idx = cpu_mmu_index(env, false);
-    oi = make_memop_idx(MO_BEQ | MO_ALIGN_16, mem_idx);
+    oi = make_memop_idx(MO_BE | MO_128 | MO_ALIGN, mem_idx);
 
     /*
      * High and low need to be switched here because this is not actually a
@@ -651,12 +617,12 @@ void HELPER(casp_le_parallel)(CPUARMState *env, uint32_t rs, uint64_t addr,
     Int128 oldv, cmpv, newv;
     uintptr_t ra = GETPC();
     int mem_idx;
-    TCGMemOpIdx oi;
+    MemOpIdx oi;
 
     assert(HAVE_CMPXCHG128);
 
     mem_idx = cpu_mmu_index(env, false);
-    oi = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
+    oi = make_memop_idx(MO_LE | MO_128 | MO_ALIGN, mem_idx);
 
     cmpv = int128_make128(env->xregs[rs], env->xregs[rs + 1]);
     newv = int128_make128(new_lo, new_hi);
@@ -672,12 +638,12 @@ void HELPER(casp_be_parallel)(CPUARMState *env, uint32_t rs, uint64_t addr,
     Int128 oldv, cmpv, newv;
     uintptr_t ra = GETPC();
     int mem_idx;
-    TCGMemOpIdx oi;
+    MemOpIdx oi;
 
     assert(HAVE_CMPXCHG128);
 
     mem_idx = cpu_mmu_index(env, false);
-    oi = make_memop_idx(MO_LEQ | MO_ALIGN_16, mem_idx);
+    oi = make_memop_idx(MO_LE | MO_128 | MO_ALIGN, mem_idx);
 
     cmpv = int128_make128(env->xregs[rs + 1], env->xregs[rs]);
     newv = int128_make128(new_lo, new_hi);
@@ -1079,6 +1045,7 @@ illegal_return:
     if (!arm_singlestep_active(env)) {
         env->pstate &= ~PSTATE_SS;
     }
+    helper_rebuild_hflags_a64(env, cur_el);
     qemu_log_mask(LOG_GUEST_ERROR, "Illegal exception return at EL%d: "
                   "resuming execution at 0x%" PRIx64 "\n", cur_el, env->pc);
 }
@@ -1169,3 +1136,103 @@ void HELPER(dc_zva)(CPUARMState *env, uint64_t vaddr_in)
 
     memset(mem, 0, blocklen);
 }
+
+static void *get_page_read(CPUARMState *env, uint64_t vaddr_in, int mmu_idx)
+{
+    uint64_t vaddr = vaddr_in & TARGET_PAGE_MASK;
+
+    void *mem = tlb_vaddr_to_host(env, vaddr, MMU_DATA_LOAD, mmu_idx);
+#ifndef CONFIG_USER_ONLY
+    if (unlikely(!mem)) {
+        uintptr_t ra = GETPC();
+
+        /*
+         * Trap if accessing an invalid page.
+         */
+        (void) probe_read(env, vaddr_in, 1, mmu_idx, ra);
+        mem = probe_read(env, vaddr, TARGET_PAGE_SIZE, mmu_idx, ra);
+    }
+#endif
+
+    return mem;
+}
+
+static void *get_page_write(CPUARMState *env, uint64_t vaddr_in, int mmu_idx)
+{
+    uint64_t vaddr = vaddr_in & TARGET_PAGE_MASK;
+
+    void *mem = tlb_vaddr_to_host(env, vaddr, MMU_DATA_STORE, mmu_idx);
+#ifndef CONFIG_USER_ONLY
+    if (unlikely(!mem)) {
+        uintptr_t ra = GETPC();
+
+        /*
+         * Trap if accessing an invalid page.
+         */
+        (void) probe_write(env, vaddr_in, 1, mmu_idx, ra);
+        mem = probe_write(env, vaddr, TARGET_PAGE_SIZE, mmu_idx, ra);
+    }
+#endif
+
+    return mem;
+}
+
+uint64_t HELPER(wkdmc)(CPUARMState *env, uint64_t vaddr_in, uint64_t vaddr_out)
+{
+    int mmu_idx = cpu_mmu_index(env, false);
+    char *in_mem, *out_mem;
+    uint8_t scratch[TARGET_PAGE_SIZE];
+    uint8_t scratch1[TARGET_PAGE_SIZE];
+    vaddr_in &= TARGET_PAGE_MASK;
+    vaddr_out &= ~0x3f;
+    int out_offset = vaddr_out - (vaddr_out & TARGET_PAGE_MASK);
+    int csize = TARGET_PAGE_SIZE - out_offset;
+
+    if (TARGET_PAGE_BITS < 10 || TARGET_PAGE_BITS > 14) {
+        return -1;
+    }
+
+    in_mem = get_page_read(env, vaddr_in, mmu_idx);
+    out_mem = get_page_write(env, vaddr_out, mmu_idx);
+    if (in_mem && out_mem) {
+        memcpy(scratch1, in_mem, TARGET_PAGE_SIZE);
+        int n = WKdm_compress(scratch1, scratch, csize);
+        if (n <= 0) {
+            return n;
+        }
+        if (n > csize) {
+            return -1;
+        }
+        memcpy(out_mem + out_offset, scratch, n);
+        return n >> 6;
+    }
+    return -1;
+}
+
+uint64_t HELPER(wkdmd)(CPUARMState *env, uint64_t vaddr_in, uint64_t vaddr_out)
+{
+    int mmu_idx = cpu_mmu_index(env, false);
+    uint8_t *in_mem, *out_mem;
+    uint8_t scratch[TARGET_PAGE_SIZE];
+    uint8_t scratch2[TARGET_PAGE_SIZE];
+    vaddr_out &= TARGET_PAGE_MASK;
+    vaddr_in &= ~0x3f;
+    int in_offset = vaddr_in - (vaddr_in & TARGET_PAGE_MASK);
+    int csize = TARGET_PAGE_SIZE - in_offset;
+
+    if (TARGET_PAGE_BITS < 10 || TARGET_PAGE_BITS > 14) {
+        return 0x3000;
+    }
+
+    in_mem = get_page_read(env, vaddr_in, mmu_idx);
+    out_mem = get_page_write(env, vaddr_out, mmu_idx);
+    if (in_mem && out_mem) {
+        memcpy(scratch, in_mem + in_offset, csize);
+        if (WKdm_decompress(scratch, scratch2, csize)) {
+            memcpy(out_mem, scratch2, TARGET_PAGE_SIZE);
+            return 0;
+        }
+    }
+    return 0x3000;
+}
+
