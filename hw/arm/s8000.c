@@ -26,7 +26,7 @@
 #include "qemu/osdep.h"
 #include "qemu/log.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
+#include "qemu/cutils.h"
 #include "hw/arm/boot.h"
 #include "exec/address-spaces.h"
 #include "hw/misc/unimp.h"
@@ -44,7 +44,7 @@
 #include "hw/or-irq.h"
 #include "hw/intc/apple_aic.h"
 #include "hw/gpio/apple_gpio.h"
-#include "hw/i2c/apple_hw_i2c.h"
+#include "hw/i2c/apple_i2c.h"
 #include "hw/usb/apple_otg.h"
 #include "hw/watchdog/apple_wdt.h"
 #include "hw/misc/apple_aes.h"
@@ -428,7 +428,7 @@ static void s8000_create_i2c(MachineState *machine, const char *name)
 
     child = find_dtb_node(child, name);
     assert(child);
-    i2c = apple_hw_i2c_create(name);
+    i2c = apple_i2c_create(name);
     assert(i2c);
     object_property_add_child(OBJECT(machine), name, OBJECT(i2c));
 

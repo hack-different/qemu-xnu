@@ -26,7 +26,7 @@
 #ifndef HW_ARM_T8030_H
 #define HW_ARM_T8030_H
 
-#include "qemu-common.h"
+#include "qemu/osdep.h"
 #include "exec/hwaddr.h"
 #include "hw/boards.h"
 #include "hw/arm/boot.h"
@@ -76,6 +76,7 @@ typedef struct
     BootMode boot_mode;
     uint32_t rtbuddyv2_protocol_version;
     uint32_t build_version;
+    uint64_t ecid;
     Notifier init_done_notifier;
     hwaddr panic_base;
     hwaddr panic_size;

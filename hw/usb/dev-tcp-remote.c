@@ -15,7 +15,7 @@
 #include "trace.h"
 #include "dev-tcp-remote.h"
 #include "tcp-usb.h"
-#include "qemu-common.h"
+#include "qemu/cutils.h"
 #include "sysemu/iothread.h"
 
 //#define DEBUG_DEV_TCP_REMOTE
@@ -383,6 +383,7 @@ static void usb_tcp_remote_realize(USBDevice *dev, Error **errp)
 
     dev->speed = USB_SPEED_HIGH;
     dev->speedmask = USB_SPEED_MASK_HIGH;
+    dev->flags |= (1 << USB_DEV_FLAG_IS_HOST);
     dev->auto_attach = 0;
 
     qemu_cond_init(&s->cond);

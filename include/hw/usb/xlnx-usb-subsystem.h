@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef XLNX_VERSAL_USB_SUBSYSTEM_H
-#define XLNX_VERSAL_USB_SUBSYSTEM_H
+#ifndef XLNX_USB_SUBSYSTEM_H
+#define XLNX_USB_SUBSYSTEM_H
 
 #include "hw/usb/xlnx-versal-usb2-ctrl-regs.h"
 #include "hw/usb/hcd-dwc3.h"
@@ -39,7 +39,7 @@ typedef struct VersalUsb2 {
     MemoryRegion usb2Ctrl_mr;
 
     VersalUsb2CtrlRegs usb2Ctrl;
-    USBDWC3 dwc3;
+    DWC3State dwc3;
 } VersalUsb2;
 
 #endif

@@ -12,6 +12,7 @@ softmmu_ss.add(when: 'CONFIG_USB', if_true: files(
 ))
 
 softmmu_ss.add(when: 'CONFIG_APPLE_OTG', if_true: files('apple_otg.c'))
+softmmu_ss.add(when: 'CONFIG_APPLE_TYPEC', if_true: files('apple_typec.c'))
 softmmu_ss.add(when: 'CONFIG_USB_TCP', if_true: files('dev-tcp-remote.c', 'hcd-tcp.c'))
 
 # usb host adapters
@@ -64,6 +65,11 @@ softmmu_ss.add(when: 'CONFIG_USB_U2F', if_true: files('u2f.c'))
 softmmu_ss.add(when: ['CONFIG_LINUX', 'CONFIG_USB_U2F'], if_true: [libudev, files('u2f-passthru.c')])
 if u2f.found()
   softmmu_ss.add(when: 'CONFIG_USB_U2F', if_true: [u2f, files('u2f-emulated.c')])
+endif
+
+# CanoKey
+if canokey.found()
+  softmmu_ss.add(when: 'CONFIG_USB_CANOKEY', if_true: [canokey, files('canokey.c')])
 endif
 
 # usb redirect

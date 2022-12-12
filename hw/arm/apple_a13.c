@@ -9,6 +9,7 @@
 #include "hw/arm/xnu_dtb.h"
 #include "hw/arm/apple_a13.h"
 #include "hw/arm/apple_a13_gxf.h"
+#include "target/arm/cpregs.h"
 #include "arm-powerctl.h"
 #include "sysemu/reset.h"
 #include "qemu/main-loop.h"
@@ -547,7 +548,6 @@ static const ARMCPRegInfo apple_a13_cp_reginfo_tcg[] = {
         .readfn = apple_a13_ipi_read_cr,
         .writefn = apple_a13_ipi_write_cr
     },
-    REGINFO_SENTINEL,
 };
 
 static void apple_a13_add_cpregs(AppleA13State *tcpu)
@@ -640,20 +640,27 @@ AppleA13State *apple_a13_cpu_create(DTBNode *node)
 
     mpidr = 0LL | tcpu->phys_id | (1LL << 31);
 
+    cpu->midr = 0;
+    cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, IMPLEMENTER, 0x61); /* Apple */
+    /* chip-revision = (variant << 4) | (revision) */
+    cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, VARIANT, 0x1);
+    cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, REVISION, 0x1);
+
     prop = find_dtb_prop(node, "cluster-type");
     switch (prop->value[0]) {
     case 'P':
         mpidr |= 1 << MPIDR_AFF2_SHIFT;
+        cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, PARTNUM, 0x12); /* Lightning */
+        break;
+    case 'E':
+        cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, PARTNUM, 0x13); /* Thunder */
         break;
     default:
         break;
     }
+
     tcpu->mpidr = mpidr;
     object_property_set_uint(obj, "mp-affinity", mpidr, &error_fatal);
-    cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, PARTNUM, 0x12 + tcpu->cluster_id);
-    /* chip-revision = (variant << 4) | (revision) */
-    cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, VARIANT, 0x1);
-    cpu->midr = FIELD_DP64(cpu->midr, MIDR_EL1, REVISION, 0x1);
 
     /* remove debug regs from device tree */
     prop = find_dtb_prop(node, "reg-private");

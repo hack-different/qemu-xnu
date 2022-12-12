@@ -42,7 +42,7 @@
 #include "qemu/error-report.h"
 #include "qemu/main-loop.h"
 #include "hw/qdev-properties.h"
-#include "qemu-common.h"
+#include "qemu/cutils.h"
 
 #define USB_HZ_FS       12000000
 #define USB_HZ_HS       96000000
@@ -2304,6 +2304,7 @@ static void dwc2_usb_device_realize(USBDevice *dev, Error **errp)
 {
     dev->speed = USB_SPEED_HIGH;
     dev->speedmask = USB_SPEED_MASK_HIGH;
+    dev->flags |= (1 << USB_DEV_FLAG_IS_HOST);
     dev->auto_attach = false;
 }
 
